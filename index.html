@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSP的公益小站 - AI API聚合服务</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', Monaco, monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f23 100%);
+            color: #00ff00;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* 背景网格 */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* 扫描线效果 */
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.1) 2px,
+                rgba(0, 0, 0, 0.1) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        /* 主容器 */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        /* 终端窗口 */
+        .terminal {
+            background: rgba(10, 10, 10, 0.95);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 
+                0 20px 60px rgba(0, 255, 0, 0.15),
+                inset 0 0 60px rgba(0, 255, 0, 0.02);
+            border: 1px solid #3d3d3d;
+        }
+        
+        /* 终端标题栏 */
+        .terminal-header {
+            background: linear-gradient(180deg, #2d2d2d 0%, #1a1a1a 100%);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        
+        .terminal-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+        }
+        
+        .btn-close { background: #ff5f56; }
+        .btn-minimize { background: #ffbd2e; }
+        .btn-maximize { background: #27ca40; }
+        
+        .terminal-title {
+            margin-left: 20px;
+            color: #888;
+            font-size: 13px;
+        }
+        
+        /* 终端内容 */
+        .terminal-body {
+            padding: 30px;
+        }
+        
+        /* ASCII Logo */
+        .ascii-logo {
+            color: #00ff00;
+            font-size: 10px;
+            line-height: 1.2;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 
+                0 0 10px #00ff00,
+                0 0 20px #00ff00,
+                0 0 30px #00ff00;
+        }
+        
+        /* 主标题 */
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+            letter-spacing: 4px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #00aa00;
+            font-size: 14px;
+            margin: 0 0 40px 0;
+            letter-spacing: 2px;
+        }
+        
+        /* 命令行输出 */
+        .command-output {
+            margin-bottom: 30px;
+        }
+        
+        .cmd-line {
+            margin: 8px 0;
+            color: #888;
+        }
+        
+        .cmd-prompt {
+            color: #00ff00;
+        }
+        
+        .cmd-result {
+            padding-left: 20px;
+            color: #00dd00;
+        }
+        
+        .cmd-success {
+            color: #27ca40;
+        }
+        
+        /* 功能卡片 */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, rgba(0, 255, 0, 0.05) 0%, rgba(0, 255, 0, 0.02) 100%);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 255, 0, 0.6);
+            box-shadow: 0 5px 20px rgba(0, 255, 0, 0.2);
+        }
+        
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card h3 {
+            margin: 0 0 8px 0;
+            color: #00ff00;
+            font-size: 16px;
+        }
+        
+        .feature-card p {
+            margin: 0;
+            color: #00aa00;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        /* 模型列表 */
+        .models-section {
+            background: rgba(0, 255, 0, 0.03);
+            border: 1px dashed rgba(0, 255, 0, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .models-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .model-tag {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid rgba(0, 255, 0, 0.4);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #00ff00;
+            transition: all 0.3s;
+        }
+        
+        .model-tag:hover {
+            background: rgba(0, 255, 0, 0.2);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 255, 0, 0.2);
+        }
+        
+        .status {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .status-indicator {
+            color: #27ca40;
+        }
+        
+        .copyright {
+            margin: 0;
+            color: #444;
+            font-size: 11px;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 20px;
+                letter-spacing: 2px;
+            }
+            
+            .ascii-logo {
+                font-size: 8px;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scanline"></div>
+    
+    <div class="container">
+        <div class="terminal">
+            <div class="terminal-header">
+                <span class="terminal-button btn-close"></span>
+                <span class="terminal-button btn-minimize"></span>
+                <span class="terminal-button btn-maximize"></span>
+                <span class="terminal-title">root@lsp-api:~</span>
+            </div>
+            
+            <div class="terminal-body">
+                <pre class="ascii-logo">
+██╗     ███████╗██████╗ 
+██║     ██╔════╝██╔══██╗
+██║     ███████╗██████╔╝
+██║     ╚════██║██╔═══╝ 
+███████╗███████║██║     
+╚══════╝╚══════╝╚═╝     </pre>
+                
+                <h1>LSP的公益小站</h1>
+                <p class="subtitle">[ AI API 聚合服务平台 ]</p>
+                
+                <div class="command-output">
+                    <p class="cmd-line"><span class="cmd-prompt">$</span> cat /etc/motd</p>
+                    <p class="cmd-line cmd-result">欢迎访问 LSP 公益 API 服务</p>
+                    <p class="cmd-line"><span class="cmd-prompt">$</span> ./check_status.sh</p>
+                    <p class="cmd-line cmd-result cmd-success">✓ 所有服务运行正常</p>
+                </div>
+                
+                <div class="features">
+                    <div class="feature-card">
+                        <div class="feature-icon">🚀</div>
+                        <h3>高速稳定</h3>
+                        <p>多节点负载均衡<br>99.9% 可用性保障</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🔐</div>
+                        <h3>安全可靠</h3>
+                        <p>端到端加密传输<br>数据隐私保护</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">💎</div>
+                        <h3>完全免费</h3>
+                        <p>公益性质运营<br>无隐藏收费</p>
+                    </div>
+                </div>
+                
+                <div class="models-section">
+                    <p class="cmd-line"><span class="cmd-prompt">$</span> ls /models/</p>
+                    <div class="models-list">
+                        <span class="model-tag">GPT-4</span>
+                        <span class="model-tag">Claude</span>
+                        <span class="model-tag">Gemini</span>
+                        <span class="model-tag">Llama</span>
+                        <span class="model-tag">Qwen</span>
+                        <span class="model-tag">DeepSeek</span>
+                        <span class="model-tag">更多...</span>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p class="status">
+                        <span class="cmd-prompt">></span> Connection established 
+                        <span class="status-indicator">●</span>
+                    </p>
+                    <p class="copyright">
+                        © 2024 LSP的公益小站 | Powered by Love & Open Source
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
